@@ -27,6 +27,7 @@ fi
 
 cd ${NODE_EXPORTER_PATH}
 
+#download and install node_exporter
 wget https://github.com/prometheus/node_exporter/releases/download/v0.18.0/node_exporter-0.18.0.linux-amd64.tar.gz
 
 tar xvfz node_exporter-0.18.0.linux-amd64.tar.gz
@@ -48,7 +49,7 @@ fi
 sudo chown -R ${USER}:${USER} ${NODE_SERVICE_FILE}
 
 sudo cat /dev/null > ${NODE_SERVICE_FILE}
-
+# install node_exporter as a service with systemctl
 cat >> ${NODE_SERVICE_FILE} <<EOL
 [Unit]
 Description=Node Exporter
