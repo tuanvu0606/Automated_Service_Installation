@@ -1,0 +1,86 @@
+#! /bin/bash
+
+USER_NAME=node_exporter
+NODE_EXPORTER_PATH="/home/${USER}/${USER_NAME}/beats_family/node_exporter"
+NODE_SERVICE_FILE="/etc/systemd/system/node_exporter.service"
+# check if user node_exporter exist, create one if not
+
+cat /etc/passwd | grep ${USER_NAME} >/dev/null 2>&1
+if [ $? -eq 0 ] ; then
+	echo "User Exists"
+else
+	echo "User Not Found, adding user..."
+	sudo useradd --no-create-home --shell /bin/false node_exporter
+	echo "User ${USER_NAME} added"
+fi
+
+#check if node_exporter folder exist, create one if not
+
+if [ -d ${NODE_EXPORTER_PATH} ] 
+then
+	echo "Directory ${NODE_EXPORTER_PATH} exists." 
+else
+	echo "Error: Directory ${NODE_EXPORTER_PATH} does not exists. Creating..."
+	mkdir -p ${NODE_EXPORTER_PATH};
+	echo "${NODE_EXPORTER_PATH} is created"
+fi
+
+cd ${NODE_EXPORTER_PATH}
+
+wget https://github.com/prometheus/node_exporter/releases/download/v0.18.0/node_exporter-0.18.0.linux-amd64.tar.gz
+
+tar xvfz node_exporter-0.18.0.linux-amd64.tar.gz
+
+sudo chown -R ${USER_NAME}:${USER_NAME} ${NODE_EXPORTER_PATH}
+
+cd node_exporter-0.18.0.linux-amd64
+
+pwd
+
+if [ -f "${NODE_SERVICE_FILE}" ]
+then 
+	echo "${NODE_SERVICE_FILE} exists"
+else
+	sudo touch ${NODE_SERVICE_FILE}
+	echo "${NODE_SERVICE_FILE} created" 
+fi
+
+sudo chown -R ${USER}:${USER} ${NODE_SERVICE_FILE}
+
+sudo cat /dev/null > ${NODE_SERVICE_FILE}
+
+cat >> ${NODE_SERVICE_FILE} <<EOL
+[Unit]
+Description=Node Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+sudo sed -i -e 's|/usr/local/bin/node_exporter|'${NODE_EXPORTER_PATH}'/node_exporter-0.18.0.linux-amd64/node_exporter|g' ${NODE_SERVICE_FILE}
+
+sudo chmod 771 ${NODE_SERVICE_FILE}
+
+sudo chown -R ${USER_NAME}:${USER_NAME} ${NODE_SERVICE_FILE}
+
+sudo systemctl daemon-reload
+
+sudo systemctl start node_exporter
+
+sudo systemctl enable node_exporter
+
+if sudo netstat -nltp | grep  node_exporter|  grep -q 9100; then
+	echo "service is running"
+else
+	echo "something is wrong, please check"
+fi
+
+sudo systemctl status node_exporter
